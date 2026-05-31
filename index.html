@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laryera CaseStudio Module</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="decorator">
+      <aside class="sidebar" aria-label="CaseStudio controls">
+        <section class="intro-card">
+          <h1>CaseStudio Module</h1>
+          <p>Parametric iPhone case generator.</p>
+        </section>
+
+        <section class="accordion-card active">
+          <button class="accordion-head" type="button" data-panel="config">
+            <span>Model & Parameters</span>
+            <span aria-hidden="true">v</span>
+          </button>
+          <div class="accordion-body" id="panel-config">
+            <button class="select-button" type="button" id="openModelModal">
+              <span class="phone-icon"></span>
+              <span id="activeModelName">iPhone 13 Pro Max</span>
+              <span aria-hidden="true">v</span>
+            </button>
+            <div class="position-grid">
+              <label>Height <input type="number" id="caseHeight" step="0.1" /></label>
+              <label>Width <input type="number" id="caseWidth" step="0.1" /></label>
+              <label>Depth <input type="number" id="caseDepth" step="0.1" /></label>
+              <label>Wall <input type="number" id="wallThickness" step="0.1" /></label>
+              <label>Lip <input type="number" id="lipHeight" step="0.1" value="1.2" /></label>
+              <label>Radius <input type="number" id="cornerRadius" step="0.1" /></label>
+            </div>
+            <hr />
+            <h2>Cutouts</h2>
+            <div class="position-grid">
+              <label>Camera X <input type="number" id="cameraX" step="0.1" value="-22" /></label>
+              <label>Camera Y <input type="number" id="cameraY" step="0.1" value="52" /></label>
+              <label>Camera W <input type="number" id="cameraWidth" step="0.1" value="30" /></label>
+              <label>Camera H <input type="number" id="cameraHeight" step="0.1" value="38" /></label>
+              <label>Port W <input type="number" id="portWidth" step="0.1" value="16" /></label>
+              <label>Button H <input type="number" id="buttonHeight" step="0.1" value="18" /></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="accordion-card">
+          <button class="accordion-head" type="button" data-panel="colors">
+            <span>Visibility & Colors</span>
+            <span aria-hidden="true">v</span>
+          </button>
+          <div class="accordion-body collapsed" id="panel-colors">
+            <label class="field-row">Case color <input type="color" id="caseColor" value="#16313d" /></label>
+            <label class="field-row">Pattern color <input type="color" id="patternColor" value="#0f3438" /></label>
+            <label class="field-row">Base color <input type="color" id="baseColor" value="#8b8581" /></label>
+          </div>
+        </section>
+
+        <section class="accordion-card active">
+          <button class="accordion-head" type="button" data-panel="patterns">
+            <span>Patterns</span>
+            <span aria-hidden="true">v</span>
+          </button>
+          <div class="accordion-body" id="panel-patterns">
+            <label class="stacked">
+              Active Pattern
+              <button class="select-button" type="button" id="openPatternModal">
+                <span id="activePatternSwatch" class="pattern-swatch"></span>
+                <span id="activePatternName">Choose a Pattern...</span>
+                <span aria-hidden="true">v</span>
+              </button>
+            </label>
+
+            <hr />
+
+            <h2>Transform Settings</h2>
+            <label class="slider-row">
+              <span>Size</span>
+              <strong id="sizeValue">2.40x</strong>
+              <input type="range" id="patternSize" min="0.8" max="4" step="0.1" value="2.4" />
+            </label>
+            <label class="slider-row">
+              <span>Rotation</span>
+              <strong id="rotationValue">0 deg</strong>
+              <input type="range" id="patternRotation" min="-45" max="45" step="1" value="0" />
+            </label>
+            <div class="position-grid">
+              <label>X <input type="number" id="positionX" value="0.0" step="0.1" /></label>
+              <label>Y <input type="number" id="positionY" value="0.0" step="0.1" /></label>
+            </div>
+            <label class="check-row"><input type="checkbox" id="arrayMode" checked /><span>Array Mode</span></label>
+            <label class="stacked">Upload Image / Logo <input type="file" id="imageUpload" accept="image/*" /></label>
+            <label class="stacked">Add Text <input type="text" id="caseText" maxlength="24" placeholder="Your name" /></label>
+          </div>
+        </section>
+
+        <section class="action-card">
+          <button id="downloadStl" type="button">Download STL</button>
+          <button id="downloadJson" class="secondary" type="button">Download Design JSON</button>
+          <button id="backToConfig" class="secondary" type="button">Back to Config</button>
+        </section>
+      </aside>
+
+      <section class="apply-card">
+        <header><h2>Apply Pattern</h2></header>
+        <div class="flat-stage">
+          <div id="flatCase" class="flat-case empty">
+            <div id="flatPattern" class="pattern-layer"></div>
+            <div class="flat-outline"></div>
+            <div id="emptyState" class="empty-state">
+              <span>*</span>
+              <p>Select a pattern from the sidebar</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="viewer-card">
+        <header>
+          <h2>3D Viewer</h2>
+          <div class="viewer-tools"><button id="resetView" type="button">Reset View</button></div>
+        </header>
+        <div class="viewer-stage">
+          <div id="threeViewer" class="three-viewer"></div>
+          <div class="viewer-meta">
+            <strong id="selectedModelName">iPhone 13 Pro Max</strong>
+            <span id="selectedModelSize">161.4 x 78.7 x 8.2 mm</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal-backdrop hidden" id="modelModal" role="dialog" aria-modal="true" aria-labelledby="modelModalTitle">
+      <section class="modal model-modal">
+        <header>
+          <h2 id="modelModalTitle">Select a Model</h2>
+          <button class="icon-button" type="button" data-close="modelModal" aria-label="Close">x</button>
+        </header>
+        <div class="modal-scroll">
+          <h3>Templates</h3>
+          <div id="modelGrid" class="model-grid"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="patternModal" role="dialog" aria-modal="true" aria-labelledby="patternModalTitle">
+      <section class="modal pattern-modal">
+        <header>
+          <h2 id="patternModalTitle">Select Pattern</h2>
+          <button class="icon-button" type="button" data-close="patternModal" aria-label="Close">x</button>
+        </header>
+        <div id="patternGrid" class="pattern-grid"></div>
+      </section>
+    </div>
+
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
