@@ -1,7 +1,7 @@
-.next
 node_modules
+.next
 out
-dist
+coverage
 *.log
-.env
-.env.local
+.env*
+!.env.example

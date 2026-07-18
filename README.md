@@ -1,40 +1,23 @@
-# Laryera Phase 1 Case Generator
+# Layera X Caseforge
 
-Standalone Phase 1 website module for a parametric phone case generator.
+A browser-based parametric phone-case designer with a real-time 3D preview and print-ready STL export.
 
-## Current Features
+## Commands
 
-- Next.js, TypeScript, React Three Fiber, and JSCAD.
-- `/case-generator` page.
-- Simple rounded rectangular case body.
-- Controls for phone width, phone height, phone thickness, wall thickness, back thickness, corner radius, and tolerance.
-- Browser 3D preview with orbit controls.
-
-## Explicitly Not Included Yet
-
-- Camera cutouts.
-- Buttons.
-- Logo/image upload.
-- Database.
-- Authentication.
-- Payments.
-- STL/3MF export.
-
-## Preview
-
-Serve the folder:
-
-```powershell
+```bash
 npm install
 npm run dev
+npm run lint
+npm test
+npm run build
 ```
 
-Open:
+Open `http://localhost:3000/case-generator`.
 
-```text
-http://localhost:3000/case-generator
-```
+## Geometry release policy
 
-## Integration Plan
+Catalog entries are preview-only until a licensed-CAD-derived base case passes the production release gate. Approximate models cannot export STL files.
 
-This is intentionally built as a separate module first. Later it can be merged into your website.
+Validated releases use TPU 95A, a 0.4 mm nozzle, and 0.20 mm layers as the baseline. A release requires an exact manufacturer model code, an approved derived STL with a SHA-256 checksum, two physical phones, and three consecutive passing prints.
+
+See [docs/geometry-release.md](docs/geometry-release.md) for the private-source workflow and brand rollout order.
