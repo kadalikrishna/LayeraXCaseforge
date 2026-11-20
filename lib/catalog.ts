@@ -1,4 +1,5 @@
 import type { CompanyId, DeviceCompany, DevicePreset, EdgeFeature } from "./types";
+import { refineDevice } from "./device-profiles";
 
 export const catalogVersion = "2026.07-validation-v1";
 
@@ -96,7 +97,7 @@ function makeDevice(seed: Seed): DevicePreset {
   };
 }
 
-export const devices = seeds.map(makeDevice).sort((a, b) => b.releaseYear - a.releaseYear || a.name.localeCompare(b.name));
+export const devices = seeds.map(makeDevice).map(refineDevice).sort((a, b) => b.releaseYear - a.releaseYear || a.name.localeCompare(b.name));
 
 export function getDevice(id: string) {
   return devices.find((item) => item.id === id) ?? devices[0];

@@ -1,12 +1,10 @@
-import { serialize } from "@jscad/stl-serializer";
 import type { CaseConfiguration, DevicePreset, DesignProject } from "./types";
-import { decorateCaseSolid } from "./geometry";
-import { loadReleasedBaseCase } from "./released-geometry";
 import { getExportIssues } from "./release";
 
 export async function downloadStl(device: DevicePreset, config: CaseConfiguration) {
   const issues = getExportIssues(device, config);
   if (issues.length) throw new Error(issues.join(" "));
+  const [{ serialize }, { decorateCaseSolid }, { loadReleasedBaseCase }] = await Promise.all([import("@jscad/stl-serializer"), import("./geometry"), import("./released-geometry")]);
   const base = await loadReleasedBaseCase(device);
   const asset = device.geometryAsset!;
   const metrics = { outerWidth: asset.outerSize[0], outerHeight: asset.outerSize[1], outerDepth: asset.outerSize[2], volumeEstimate: 0 };

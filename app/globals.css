@@ -1,31 +1,33 @@
+@font-face { font-family: Inter; src: url('/fonts/inter-regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: Inter; src: url('/fonts/inter-medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: Inter; src: url('/fonts/inter-semibold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: Inter; src: url('/fonts/inter-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Bebas Neue'; src: url('/fonts/bebas-neue.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 :root {
   color-scheme: light;
-  --bg: #f5f4f0;
-  --panel: #ffffff;
-  --panel-2: #efede7;
-  --line: rgba(17, 17, 17, 0.1);
-  --text: #111111;
-  --muted: #888888;
-  --accent: #e63329;
-  --accent-dark: #b5251c;
-  --accent-ink: #ffffff;
-  --warning: #b86d08;
+  --font-body: Inter, Arial, sans-serif;
+  --font-display: 'Bebas Neue', Impact, sans-serif;
+  --bg: #f5f4f0; --panel: #fffefa; --panel-2: #eeede8;
+  --line: #1111111a; --text: #111111; --muted: #73716c;
+  --accent: #e63329; --accent-dark: #bc261d; --accent-ink: #ffffff; --warning: #986227;
+  --shadow: 0 12px 44px #1915100c;
 }
-
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0a0a0a;
-  --panel: #151515;
-  --panel-2: #201e1b;
-  --line: rgba(255, 255, 255, .13);
-  --text: #f5f4f0;
-  --muted: #aaa49c;
-  --accent-dark: #ff5147;
-  --warning: #f3ad4e;
+  --bg: #151514; --panel: #20201e; --panel-2: #292926;
+  --line: #ffffff20; --text: #f5f4f0; --muted: #aaa79e;
+  --accent: #f34b3f; --accent-dark: #ff685b; --warning: #e9b774;
+  --shadow: 0 12px 44px #0003;
 }
-
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body), Inter, Arial, sans-serif; }
+html, body { margin: 0; min-height: 100%; color: var(--text); background: var(--bg); font-family: var(--font-body); }
 button, input, select { font: inherit; }
-button { cursor: pointer; }
-.boot { min-height: 100vh; display: grid; place-items: center; color: var(--accent); letter-spacing: .12em; text-transform: uppercase; }
+button, summary { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .4; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button { transition: background .16s, color .16s, border-color .16s; }
+button, a { -webkit-tap-highlight-color: transparent; }
+::selection { background: var(--accent); color: white; }
+.boot { min-height: 100dvh; display: grid; place-items: center; font-family: var(--font-display); font-size: 30px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

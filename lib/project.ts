@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { catalogVersion } from "./catalog";
+import { catalogVersion, devices } from "./catalog";
 import type { CaseConfiguration, DesignProject, DevicePreset } from "./types";
 
 export const defaultConfiguration: CaseConfiguration = {
   style: "protective",
-  color: "#5eead4",
+  color: "#e63329",
   finish: "satin",
-  pattern: "diagonal",
+  pattern: "solid",
   patternMode: "emboss",
   patternDepth: 0.6,
   patternScale: 1,
@@ -20,7 +20,7 @@ export const defaultConfiguration: CaseConfiguration = {
 };
 
 const configurationSchema = z.object({
-    style: z.enum(["slim", "protective"]), color: z.string(), finish: z.enum(["matte", "satin", "gloss"]),
+    style: z.enum(["slim", "protective"]), color: z.string().regex(/^#[a-f0-9]{6}$/i), finish: z.enum(["matte", "satin", "gloss"]),
     pattern: z.enum(["solid", "diagonal", "grid", "dots", "waves"]), patternMode: z.enum(["emboss", "engrave"]),
     patternDepth: z.number().min(0.3).max(1.4),
     patternScale: z.number().min(0.6).max(2), patternSpacing: z.number().min(6).max(22),
@@ -31,7 +31,7 @@ const configurationSchema = z.object({
 
 const projectBaseSchema = z.object({
   catalogVersion: z.string(),
-  deviceId: z.string(),
+  deviceId: z.string().refine((id) => devices.some((device) => device.id === id), "Unknown phone model"),
 });
 
 const projectSchema = projectBaseSchema.extend({
@@ -65,3 +65,10 @@ export function parseProject(value: unknown): DesignProject {
   const legacy = legacyProjectSchema.parse(value);
   return projectSchema.parse({ ...legacy, schemaVersion: 3, modelCode: null, geometryRevision: null, configuration: { ...defaultConfiguration, ...legacy.configuration } });
 }
+
+export function restoreProject(value: unknown) {
+  const project = parseProject(value);
+  const device = devices.find((item) => item.id === project.deviceId)!;
+  return { project, device, configuration: project.configuration };
+}
+

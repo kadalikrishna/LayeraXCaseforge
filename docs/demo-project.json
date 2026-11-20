@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 3,
+  "catalogVersion": "2026.07-validation-v1",
+  "deviceId": "iphone-15-pro",
+  "modelCode": null,
+  "geometryRevision": null,
+  "configuration": {
+    "style": "protective",
+    "color": "#e63329",
+    "finish": "satin",
+    "pattern": "solid",
+    "patternMode": "engrave",
+    "patternDepth": 0.6,
+    "patternScale": 1,
+    "patternSpacing": 10,
+    "patternRotation": 45,
+    "patternOffsetX": 0,
+    "patternOffsetY": 0,
+    "showPhone": true,
+    "phoneOpacity": 0.42,
+    "text": {
+      "id": "primary-text",
+      "kind": "text",
+      "value": "LAYERA",
+      "mode": "emboss",
+      "x": 0,
+      "y": -18,
+      "scale": 1,
+      "rotation": 0,
+      "depth": 0.8
+    }
+  }
+}

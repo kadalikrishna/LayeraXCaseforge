@@ -1,6 +1,6 @@
-import { booleans, extrusions, geometries, hulls, primitives, text, transforms } from "@jscad/modeling";
+import { booleans, extrusions, geometries, hulls, primitives, text, transforms, maths } from "@jscad/modeling";
 import type { Geom2, Geom3 } from "@jscad/modeling/src/geometries/types";
-import type { CaseConfiguration, DevicePreset } from "./types";
+import type { CameraRegion, CaseConfiguration, DevicePreset } from "./types";
 
 const { intersect, subtract, union } = booleans;
 const { extrudeLinear } = extrusions;
@@ -10,62 +10,78 @@ const { circle, rectangle, roundedCuboid, roundedRectangle } = primitives;
 const { vectorText } = text;
 const { rotateZ, translate } = transforms;
 
-export type CaseMetrics = { outerWidth: number; outerHeight: number; outerDepth: number; volumeEstimate: number };
-
-export function getCaseMetrics(device: DevicePreset, config: CaseConfiguration): CaseMetrics {
-  const profile = config.style === "protective" ? { wall: 2.4, back: 1.9, clearance: 0.45 } : { wall: 1.7, back: 1.4, clearance: 0.35 };
-  const outerWidth = device.width + profile.clearance * 2 + profile.wall * 2;
-  const outerHeight = device.height + profile.clearance * 2 + profile.wall * 2;
-  const outerDepth = device.thickness + profile.clearance + profile.back + (config.style === "protective" ? 1 : 0.4);
-  const shellVolume = outerWidth * outerHeight * outerDepth - (device.width + profile.clearance * 2) * (device.height + profile.clearance * 2) * (device.thickness + profile.clearance);
-  return { outerWidth, outerHeight, outerDepth, volumeEstimate: Math.max(0, shellVolume / 1000) };
-}
+export { getCaseMetrics, validateCase } from './case-metrics';
+import { getCaseMetrics, type CaseMetrics } from './case-metrics';
 
 export function createCaseSolid(device: DevicePreset, config: CaseConfiguration): Geom3 {
+  return decorateCaseSolid(createBaseCase(device, config), device, config);
+}
+
+export function profileSolid(width: number, height: number, depth: number, radius: number, edge = 0.5): Geom3 {
+  const bevel = Math.min(edge, depth / 4, radius / 2);
+  const sections = [[-depth / 2, bevel], [-depth / 2 + bevel, 0], [depth / 2 - bevel, 0], [depth / 2, bevel]];
+  return extrusions.extrudeFromSlices({ numberOfSlices: 4, ...{ repair: false }, callback: (_progress, index) => {
+    const [z, inset] = sections[index];
+    const outline = roundedRectangle({ size: [width - inset * 2, height - inset * 2], roundRadius: Math.max(0.1, Math.min(radius - inset, (width - inset * 2) / 2 - 0.01, (height - inset * 2) / 2 - 0.01)), segments: 48 });
+    return extrusions.slice.transform(maths.mat4.fromTranslation(maths.mat4.create(), [0, 0, z]), extrusions.slice.fromSides(geometries.geom2.toSides(outline)));
+  } }, geometries.geom2.create());
+}
+
+export function cameraRegions(device: DevicePreset): CameraRegion[] {
+  return device.profile?.openings ?? [{ ...device.camera, shape: "rounded-rect", role: "island" }];
+}
+
+export function cameraOutline(region: CameraRegion, padding = 0): Geom2 {
+  const shape = region.shape === "circle" ? circle({ radius: region.radius + padding, segments: 40 }) : roundedRectangle({ size: [region.width + padding * 2, region.height + padding * 2], roundRadius: Math.min(region.radius + padding, (region.width + padding * 2) / 2 - 0.01, (region.height + padding * 2) / 2 - 0.01), segments: 40 });
+  return translate([region.x, region.y], shape);
+}
+
+function cameraKeepOut(device: DevicePreset): Geom2 { return union(...cameraRegions(device).map((region) => cameraOutline(region, 3.8))); }
+
+export function createBaseCase(device: DevicePreset, config: CaseConfiguration): Geom3 {
   const profile = config.style === "protective" ? { wall: 2.4, back: 1.9, clearance: 0.45, lip: 1.25 } : { wall: 1.7, back: 1.4, clearance: 0.35, lip: 0.65 };
   const metrics = getCaseMetrics(device, config);
-  const outer = roundedCuboid({ size: [metrics.outerWidth, metrics.outerHeight, metrics.outerDepth], roundRadius: Math.min(device.cornerRadius + profile.wall, metrics.outerDepth / 2 - 0.05), segments: 24 });
+  const outer = profileSolid(metrics.outerWidth, metrics.outerHeight, metrics.outerDepth, device.cornerRadius + profile.wall, device.profile?.edgeRadius ?? 0.6);
   const cavityWidth = device.width + profile.clearance * 2;
   const cavityHeight = device.height + profile.clearance * 2;
   const cavityDepth = device.thickness + profile.clearance + 3;
   const cavityStart = -metrics.outerDepth / 2 + profile.back;
-  const cavity = translate([0, 0, cavityStart + cavityDepth / 2], roundedCuboid({ size: [cavityWidth, cavityHeight, cavityDepth], roundRadius: Math.min(device.cornerRadius, cavityDepth / 2 - 0.05), segments: 24 }));
+  const cavity = translate([0, 0, cavityStart + cavityDepth / 2], profileSolid(cavityWidth, cavityHeight, cavityDepth, device.cornerRadius + profile.clearance, 0.35));
   const openings = makeEdgeOpenings(device, metrics, profile.wall);
   const solid = union(subtract(outer, cavity, makeCameraOpening(device, metrics), ...openings), makeCameraLip(device, metrics), ...makeButtonCovers(device, metrics, profile.wall));
-  return decorateCaseSolid(solid, device, config, metrics);
+  return solid;
 }
 
 export function decorateCaseSolid(base: Geom3, device: DevicePreset, config: CaseConfiguration, metrics = getCaseMetrics(device, config)): Geom3 {
   let solid = base;
   const decoration = makeDecoration(device, config, metrics);
   if (decoration) solid = config.patternMode === "engrave" ? subtract(solid, decoration) : union(solid, decoration);
-  const textSolid = makeText(config, metrics);
+  const textSolid = makeText(config, metrics, device);
   if (textSolid) solid = config.text.mode === "engrave" ? subtract(solid, textSolid) : union(solid, textSolid);
   return solid;
 }
 
 function makeCameraOpening(device: DevicePreset, metrics: CaseMetrics): Geom3 {
   const backZ = -metrics.outerDepth / 2;
-  return translate([device.camera.x, device.camera.y, backZ], roundedCuboid({ size: [device.camera.width + 2.4, device.camera.height + 2.4, 6], roundRadius: Math.min(device.camera.radius, 2.9), segments: 20 }));
+  return translate([0, 0, backZ - 5], extrudeLinear({ height: 12 }, union(...cameraRegions(device).map((region) => cameraOutline(region, 0.8)))));
 }
 
 function makeCameraLip(device: DevicePreset, metrics: CaseMetrics): Geom3 {
-  const depth = 1.2;
-  const z = -metrics.outerDepth / 2 - depth / 2 + 0.08;
-  const outer = roundedCuboid({ size: [device.camera.width + 7, device.camera.height + 7, depth], roundRadius: 0.5, segments: 20 });
-  const inner = roundedCuboid({ size: [device.camera.width + 2.4, device.camera.height + 2.4, depth + 1], roundRadius: 0.5, segments: 20 });
-  return translate([device.camera.x, device.camera.y, z], subtract(outer, inner));
+  const depth = Math.max(1.2, (device.profile?.cameraHeight ?? 2.4) - 1);
+  const outer = union(...cameraRegions(device).map((region) => cameraOutline(region, 2.5)));
+  const inner = union(...cameraRegions(device).map((region) => cameraOutline(region, 0.8)));
+  return translate([0, 0, -metrics.outerDepth / 2 - depth + 0.06], extrudeLinear({ height: depth }, subtract(outer, inner)));
 }
 
 function makeEdgeOpenings(device: DevicePreset, metrics: CaseMetrics, wall: number): Geom3[] {
   return device.edgeFeatures.filter((feature) => feature.kind !== "button").map((feature) => {
-    const openingDepth = feature.kind === "port" ? 4.8 : feature.kind === "speaker" ? 2.8 : 2.2;
+    const openingDepth = feature.depth ?? (feature.kind === "port" ? 4.8 : feature.kind === "speaker" ? 2.8 : 2.2);
     if (feature.edge === "bottom" || feature.edge === "top") {
       const y = feature.edge === "bottom" ? -metrics.outerHeight / 2 : metrics.outerHeight / 2;
-      return translate([feature.offset, y, 0.2], roundedCuboid({ size: [feature.length, wall + 5, openingDepth], roundRadius: Math.min(1.4, openingDepth / 2 - 0.05), segments: 12 }));
+      return translate([feature.offset, y, 0.2], roundedCuboid({ size: [feature.length, wall + 5, openingDepth], roundRadius: Math.min(1.4, openingDepth / 2 - 0.05, feature.length / 2 - 0.01), segments: 16 }));
     }
     const x = feature.edge === "left" ? -metrics.outerWidth / 2 : metrics.outerWidth / 2;
-    return translate([x, feature.offset, 0.2], roundedCuboid({ size: [wall + 5, feature.length, openingDepth], roundRadius: Math.min(1.4, openingDepth / 2 - 0.05), segments: 12 }));
+    return translate([x, feature.offset, 0.2], roundedCuboid({ size: [wall + 5, feature.length, openingDepth], roundRadius: Math.min(1.4, openingDepth / 2 - 0.05, feature.length / 2 - 0.01), segments: 16 }));
   });
 }
 
@@ -110,36 +126,46 @@ function makeDecoration(device: DevicePreset, config: CaseConfiguration, metrics
   pattern = rotateZ((config.patternRotation * Math.PI) / 180, pattern);
   pattern = translate([config.patternOffsetX, config.patternOffsetY], pattern);
   const safeArea = roundedRectangle({ size: [safeWidth, safeHeight], roundRadius: Math.min(device.cornerRadius, 8), segments: 20 });
-  const cameraGuard = translate([device.camera.x, device.camera.y], roundedRectangle({ size: [device.camera.width + 7, device.camera.height + 7], roundRadius: Math.min(device.camera.radius + 2, 5), segments: 16 }));
+  const cameraGuard = cameraKeepOut(device);
   const clipped = intersect(pattern, subtract(safeArea, cameraGuard)) as Geom2;
   const depth = config.patternDepth + 0.12;
   const z = config.patternMode === "emboss" ? -metrics.outerDepth / 2 - depth + 0.04 : -metrics.outerDepth / 2 - 0.04;
   return translate([0, 0, z], extrudeLinear({ height: depth }, clipped));
 }
 
-function makeText(config: CaseConfiguration, metrics: CaseMetrics): Geom3 | null {
+function makeText(config: CaseConfiguration, metrics: CaseMetrics, device: DevicePreset): Geom3 | null {
   const value = config.text.value.trim();
   if (!value) return null;
   const paths = vectorText({ input: value, height: 10 * config.text.scale, align: "center" });
+  const points = paths.flat();
+  if (!points.length) return null;
+  const minX = Math.min(...points.map((point) => point[0]));
+  const maxX = Math.max(...points.map((point) => point[0]));
+  const minY = Math.min(...points.map((point) => point[1]));
+  const maxY = Math.max(...points.map((point) => point[1]));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const fit = Math.max(0.01, Math.min(1, (device.width - 18 - 2 * Math.abs(config.text.x)) / (maxX - minX + 1.1 * config.text.scale)));
   const strokes = paths.flatMap((points) => {
-    const path = path2.fromPoints({}, points);
+    // The case back faces negative Z: mirror X so lettering reads from outside.
+    const path = path2.fromPoints({}, points.map((point) => [-(point[0] - centerX) * fit, (point[1] - centerY) * fit]));
     const segments = path2.toPoints(path);
     return segments.slice(1).map((point, index) => {
       const previous = segments[index];
-      return hull(translate(previous, circle({ radius: 0.55 * config.text.scale, segments: 12 })), translate(point, circle({ radius: 0.55 * config.text.scale, segments: 12 })));
+      return hull(translate(previous, circle({ radius: 0.55 * config.text.scale * fit, segments: 12 })), translate(point, circle({ radius: 0.55 * config.text.scale * fit, segments: 12 })));
     });
   });
   if (!strokes.length) return null;
-  const shape = union(...strokes);
+  const placed = translate([config.text.x, config.text.y], rotateZ((config.text.rotation * Math.PI) / 180, union(...strokes)));
+  const safeArea = roundedRectangle({ size: [device.width - 12, device.height - 16], roundRadius: 6, segments: 20 });
+  const cameraGuard = cameraKeepOut(device);
+  const shape = intersect(placed, subtract(safeArea, cameraGuard));
+  if (!geometries.geom2.toSides(shape).length) return null;
   const extruded = extrudeLinear({ height: config.text.depth + 0.12 }, shape);
   const z = -metrics.outerDepth / 2 - (config.text.mode === "emboss" ? config.text.depth - 0.04 : -0.04);
-  return translate([config.text.x, config.text.y, z], rotateZ((config.text.rotation * Math.PI) / 180, extruded));
+  return translate([0, 0, z], extruded);
 }
 
-export function validateCase(device: DevicePreset, config: CaseConfiguration) {
-  const warnings: string[] = [];
-  if (config.text.value.length > 18) warnings.push("Text must be 18 characters or fewer.");
-  if (Math.abs(config.text.x) > device.width / 2 - 8 || Math.abs(config.text.y) > device.height / 2 - 12) warnings.push("Text is outside the printable safe area.");
-  if (config.patternDepth > 1.2 || config.text.depth > 1.2) warnings.push("Relief deeper than 1.2 mm may print poorly in TPU.");
-  return warnings;
-}
+
+
+

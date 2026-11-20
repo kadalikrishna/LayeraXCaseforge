@@ -39,6 +39,18 @@ export function getReleaseIssues(device: DevicePreset): string[] {
 export function getExportIssues(device: DevicePreset, configuration: CaseConfiguration): string[] {
   const issues = getReleaseIssues(device);
   if (configuration.style !== "protective") issues.push("Only the validated protective TPU architecture can be exported.");
+  const decorated = configuration.pattern !== "solid" || configuration.text.value.trim().length > 0;
+  const limits = device.geometryAsset?.customization;
+  if (decorated && !limits) issues.push("This release has no validated decoration limits; use a solid case without text.");
+  if (decorated && limits) {
+    const values = [limits.maxEmbossDepth, limits.maxEngraveDepth, limits.minBackThickness, limits.backThickness];
+    if (values.some((value) => !Number.isFinite(value) || value < 0) || limits.minBackThickness <= 0 || limits.backThickness < limits.minBackThickness) issues.push("Decoration validation metadata is invalid.");
+    const features = [...(configuration.pattern !== "solid" ? [{ mode: configuration.patternMode, depth: configuration.patternDepth }] : []), ...(configuration.text.value.trim() ? [configuration.text] : [])];
+    for (const feature of features) {
+      if (feature.depth > (feature.mode === "emboss" ? limits.maxEmbossDepth : limits.maxEngraveDepth)) issues.push("Decoration depth exceeds this release's validated limit.");
+      if (feature.mode === "engrave" && limits.backThickness - feature.depth - 0.12 < limits.minBackThickness) issues.push("Engraving would leave insufficient back thickness.");
+    }
+  }
   return issues;
 }
 
