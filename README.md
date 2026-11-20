@@ -1,8 +1,28 @@
-﻿# Layera X Caseforge
+# Layera X Caseforge
 
 A local phone-case design studio built with Next.js, React, Three.js, and JSCAD. Choose a phone, customize its case, inspect the interactive 3D preview, and save or share the design as JSON.
 
 **Current status:** this is a design preview prototype. No phone model has certified physical fit, and production STL export is disabled for the current catalog.
+
+## Screenshots
+
+### 3D case editor
+
+Customize an iPhone 15 Pro case with colors, finishes, patterns, and text while inspecting the live 3D preview.
+
+![Caseforge 3D editor showing a red iPhone 15 Pro case with LAYERA text and customization controls](docs/screenshots/case-editor.png)
+
+### Brand selection
+
+Browse supported brands or search for a phone model from the starting screen.
+
+![Caseforge home screen with model search, filters, and ten phone brands](docs/screenshots/brand-selection.png)
+
+### Phone catalog
+
+Compare models within a brand before opening the case editor.
+
+![Apple phone catalog showing model cards, dimensions, and search filters](docs/screenshots/phone-catalog.png)
 
 ## Features
 
